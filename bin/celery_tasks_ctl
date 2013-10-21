@@ -1,0 +1,27 @@
+#!/usr/bin/env python
+
+import logging
+import os
+import sys
+
+from docopt import docopt
+
+# Use local changes first if they exist for easier testing purposes
+dir_path = os.path.dirname(os.path.realpath(__file__))
+local_changes = os.path.join(dir_path, '../celery_tasks_ctl')
+if os.path.exists(local_changes):
+    sys.path.insert(0, os.path.join(local_changes, '..'))
+
+import celery_tasks_ctl
+
+
+if __name__ == '__main__':
+    logging.basicConfig()
+    LOG = logging.getLogger('celery_task_ctrl')
+
+    args = docopt(celery_tasks_ctl.__doc__)
+
+    # Set the log level if called as a script
+    LOG.setLevel(getattr(logging, args['--loglevel'].upper()))
+
+    sys.exit(celery_tasks_ctl.main(args))
