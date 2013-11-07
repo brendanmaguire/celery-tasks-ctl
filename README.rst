@@ -12,6 +12,12 @@ Install
 
     python setup.py install
 
+or
+
+::
+
+    pip install celery-tasks-ctl
+
 Run
 ===
 ::
