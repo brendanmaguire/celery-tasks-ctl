@@ -24,6 +24,7 @@ Options:
 import itertools
 import json
 import logging
+import pickle
 import pika
 import re
 
@@ -35,14 +36,6 @@ CELERY_QUEUE_NAME = 'celery'
 LOG = logging.getLogger(__name__)
 
 
-def active_tasks(celery_inspect_obj):
-    return list(extract_task_ids(celery_inspect_obj.active()))
-
-
-def reserved_tasks(celery_inspect_obj):
-    return list(extract_task_ids(celery_inspect_obj.reserved()))
-
-
 def queued_tasks(mq_channel, queue):
     """
     Get task ids for all tasks in the specified queue
@@ -50,21 +43,56 @@ def queued_tasks(mq_channel, queue):
     :param mq_channel: The pika Channel to use to connect queue
     :param queue: The queue to read tasks from
     """
-    msgs = []
-    while True:
-        # Get tasks off the queue until empty (i.e. None returned)
-        method, header, body_str = mq_channel.basic_get(queue=queue)
-        if method is None:
-            break
+    amqp_messages = _read_messages_from_amqp(mq_channel, queue)
+    return _extract_task_ids_from_amqp_messages(amqp_messages)
 
-        body = json.loads(body_str)
-        msgs.append((method.delivery_tag, body['id']))
 
-    for delivery_tag, task_id in msgs:
-        # Reject the tasks, therefore putting them back on the queue
-        mq_channel.basic_reject(delivery_tag=delivery_tag)
+def _read_messages_from_amqp(mq_channel, queue):
+    """ Reads all amqp messages from the queue and requeues them """
+    amqp_messages = []
+    delivery_tags = []
+    try:
+        # Wide try block to ensure no matter what happens in here we put
+        # the messages we've taken back on to the queue
+        while True:
+            # Get tasks off the queue until empty (i.e. None returned)
+            amqp_message = mq_channel.basic_get(queue=queue)
+            method, _header, _body_str = amqp_message
+            if method is None:
+                break
+            delivery_tags.append(method.delivery_tag)
+            amqp_messages.append(amqp_message)
+    finally:
+        for delivery_tag in delivery_tags:
+            # Reject the tasks, therefore putting them back on the queue
+            mq_channel.basic_reject(delivery_tag=delivery_tag)
 
-    return [task_id for _, task_id in msgs]
+    return amqp_messages
+
+
+def _extract_task_ids_from_amqp_messages(amqp_messages):
+    task_ids = []
+
+    for (method, header, body_str) in amqp_messages:
+        if header.content_type == 'application/x-python-serialize':
+            body = pickle.loads(body_str)
+        elif header.content_type == 'application/json':
+            body = json.loads(body_str)
+        else:
+            raise NotImplementedError(
+                'No decode logic for messages of type %s yet' %
+                header.content_type)
+        task_ids.append(body['id'])
+
+    return task_ids
+
+
+def active_tasks(celery_inspect_obj):
+    return list(extract_task_ids(celery_inspect_obj.active()))
+
+
+def reserved_tasks(celery_inspect_obj):
+    return list(extract_task_ids(celery_inspect_obj.reserved()))
 
 
 def extract_task_ids(inspect_map):
