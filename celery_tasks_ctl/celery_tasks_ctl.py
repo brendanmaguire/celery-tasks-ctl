@@ -10,15 +10,15 @@ Usage:
     celery_tasks_ctl revoke [options] (--regex=<TASK_REGEX> | [TASKID])
     celery_tasks_ctl -h | --help
 
-    Options:
-        -h --help                                       Print this help
-        --hostname=<HOSTNAME>           \
-                RabbitMQ Server [default: localhost]
-        --port=<PORT>                   \
-                RabbitMQ Port [default: 5672]
-        --virtual-host=<VIRTUAL-HOST>   \
-                RabbitMQ Virtual Host [default: /]
-        --loglevel=(debug | info | warning | error)     [default: warning]
+Options:
+    -h --help                                       Print this help
+    --hostname=<HOSTNAME>               \
+            RabbitMQ Server [default: localhost]
+    --port=<PORT>                       \
+            RabbitMQ Port [default: 5672]
+    --virtual-host=<VIRTUAL-HOST>       \
+            RabbitMQ Virtual Host [default: /]
+    --loglevel=(debug | info | warning | error)     [default: warning]
 '''
 
 import itertools
