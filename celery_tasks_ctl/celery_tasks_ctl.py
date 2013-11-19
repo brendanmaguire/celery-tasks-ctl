@@ -9,9 +9,9 @@ Usage:
     celery_tasks_ctl list [options] (all | active | reserved | queued)
     celery_tasks_ctl revoke [options] (--regex=<TASK_REGEX> | [TASKID])
     celery_tasks_ctl -h | --help
+    celery_tasks_ctl --version
 
 Options:
-    -h --help                                       Print this help
     --hostname=<HOSTNAME>               \
             RabbitMQ Server [default: localhost]
     --port=<PORT>                       \
@@ -19,6 +19,8 @@ Options:
     --virtual-host=<VIRTUAL-HOST>       \
             RabbitMQ Virtual Host [default: /]
     --loglevel=(debug | info | warning | error)     [default: warning]
+    -h --help                                       Print this help
+    --version                                       Print the version
 '''
 
 import itertools
@@ -30,6 +32,8 @@ import re
 
 from celery import Celery
 from docopt import docopt
+
+from ._version import __version__
 
 CELERY_QUEUE_NAME = 'celery'
 
@@ -185,6 +189,10 @@ def get_celery_connection(hostname, port, virtual_host):
 
 
 def main(args):
+    if args['--version']:
+        print 'Version %s' % __version__
+        return 0
+
     hostname = args['--hostname']
     port = int(args['--port'])
     virtual_host = args['--virtual-host']
